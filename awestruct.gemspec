@@ -4,7 +4,7 @@ require 'awestruct/version'
 spec = Gem::Specification.new do |s|
   s.name          = 'awestruct'
   s.version       = Awestruct::VERSION
-  s.date          = '2014-06-19'
+  s.date          = '2014-09-26'
 
   s.authors       = ['Bob McWhirter', 'Jason Porter', 'Lance Ball', 'Dan Allen', 'Torsten Curdt', 'other contributors']
   s.email         = ['bob@mcwhirter.org', 'lightguard.jp@gmail.com', 'lball@redhat.com', 'dan.j.allen@gmail.com', 'tcurdt@vafer.org']
@@ -41,12 +41,12 @@ Haml and Markdown filters are touchy things. Redcarpet or Rdiscount work well if
   s.add_dependency 'bootstrap-sass', '~> 3.1.1.0'
   s.add_dependency 'zurb-foundation', '~> 4.3.2'
   s.add_dependency 'mime-types', '~> 2.1'
-  s.add_dependency 'rest-client', '~> 1.6.7'
+  s.add_dependency 'rest-client', '~> 1.7.2'
   s.add_dependency 'ruby-s3cmd', '~> 0.1.5'
   s.add_dependency 'listen', '~> 2.7.1'
   s.add_dependency 'rack', '~> 1.5.2'
   s.add_dependency 'git', '~> 1.2.6'
   s.add_dependency 'guard-livereload', '~> 2.1.2'
   s.add_dependency 'colorize', '~> 0.7.1'
-  s.add_dependency 'parallel', '> 1.0.0' 
+  s.add_dependency 'parallel', '> 1.1.1'
 end

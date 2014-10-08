@@ -1,4 +1,5 @@
 require 'awestruct/util/inflector'
+require 'awestruct/util/exception_helper'
 require 'awestruct/util/default_inflections'
 
 require 'awestruct/config'
@@ -15,8 +16,6 @@ require 'set'
 require 'date'
 
 require 'compass'
-
-require 'pry'
 require 'parallel'
 
 class OpenStruct
@@ -57,51 +56,41 @@ module Awestruct
     def run(profile, base_url, default_base_url, force=false)
       start_time = DateTime.now
       $LOG.debug 'adjust_load_path' if $LOG.debug?
-      start_time = DateTime.now
+      $LOG.debug 'adjust_load_path' if $LOG.debug?
       adjust_load_path
-      puts "Total time in adjust_load_path: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'load_default_site_yaml' if $LOG.debug?
-      start_time = DateTime.now
       load_default_site_yaml( profile )
       puts "Total time in load_default_site_yaml: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'load_user_site_yaml -- profile' if $LOG.debug?
-      start_time = DateTime.now
+      $LOG.debug 'load_user_site_yaml -- profile' if $LOG.debug?
       load_user_site_yaml( profile )
-      puts "Total time in load_user_site_yaml: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'set_base_url' if $LOG.debug?
-      start_time = DateTime.now
       set_base_url( base_url, default_base_url )
       puts "Total time in set_base_url: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'load_yamls' if $LOG.debug?
-      start_time = DateTime.now
+      $LOG.debug 'load_yamls' if $LOG.debug?
       load_yamls
-      puts "Total time in load_yamls: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'load_pipeline' if $LOG.debug?
-      start_time = DateTime.now
       load_pipeline
       puts "Total time in load_pipeline: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'load_pages' if $LOG.debug?
-      start_time = DateTime.now
+      $LOG.debug 'load_pages' if $LOG.debug?
       load_pages
-      puts "Total time in load_pages: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'execute_pipeline' if $LOG.debug?
-      start_time = DateTime.now
+      $LOG.info 'Excecuting pipeline...' if $LOG.info?
       execute_pipeline
       puts "Total time in execute_pipeline: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'configure_compass' if $LOG.debug?
-      start_time = DateTime.now
+      $LOG.debug 'configure_compass' if $LOG.debug?
       configure_compass
-      puts "Total time in configure_compass: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'set_urls' if $LOG.debug?
-      start_time = DateTime.now
       set_urls( site.pages )
       puts "Total time in set_urls: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'build_page_index' if $LOG.debug?
-      start_time = DateTime.now
+      $LOG.debug 'build_page_index' if $LOG.debug?
       build_page_index
-      puts "Total time in build_page_index: #{DateTime.now.to_time - start_time.to_time} seconds"
       $LOG.debug 'generate_output' if $LOG.debug?
-      start_time = DateTime.now
+      $LOG.info 'Generating pages...' if $LOG.info?
       generate_output
       puts "Total time in generate_output: #{DateTime.now.to_time - start_time.to_time} seconds"
       return 0
@@ -156,32 +145,42 @@ module Awestruct
 
     def load_site_yaml(yaml_path, profile = nil)
       if ( File.exist?( yaml_path ) )
-        data = YAML.load( File.read( yaml_path, :encoding => 'bom|utf-8' ) )
-        if ( profile )
-          # JP: Interpolation now turned off by default, turn it per page if needed
-          site.interpolate = false
-          profile_data = {}
-          data.each do |k,v|
-            if ( ( k == 'profiles' ) && ( ! profile.nil? ) )
-              profile_data = ( v[profile] || {} )
-            else
+        begin
+          data = YAML.load( File.read( yaml_path, :encoding => 'bom|utf-8' ) )
+          if ( profile )
+            # JP: Interpolation now turned off by default, turn it per page if needed
+            site.interpolate = false
+            profile_data = {}
+            data.each do |k,v|
+              if ( ( k == 'profiles' ) && ( ! profile.nil? ) )
+                profile_data = ( v[profile] || {} )
+              else
+                site.send( "#{k}=", merge_data( site.send( "#{k}" ), v ) )
+              end
+            end if data
+            site.profile = profile
+            profile_data.each do |k,v|
               site.send( "#{k}=", merge_data( site.send( "#{k}" ), v ) )
             end
-          end if data
-          site.profile = profile
-          profile_data.each do |k,v|
-            site.send( "#{k}=", merge_data( site.send( "#{k}" ), v ) )
+          else
+            data.each do |k,v|
+              site.send( "#{k}=", v )
+            end if data
           end
-        else
-          data.each do |k,v|
-            site.send( "#{k}=", v )
-          end if data
+        rescue Exception => e
+          ExceptionHelper.log_building_error e, yaml_path
+          ExceptionHelper.mark_failed
         end
       end
     end
 
     def load_yaml(yaml_path)
-      data = YAML.load( File.read( yaml_path ) )
+      begin
+        data = YAML.load( File.read( yaml_path ) )
+      rescue Exception => e
+        ExceptionHelper.log_building_error e, yaml_path
+        ExceptionHelper.mark_failed
+      end
       name = File.basename( yaml_path, '.yml' )
       site.send( "#{name}=", massage_yaml( data ) )
     end
@@ -295,8 +294,7 @@ module Awestruct
 
     def generate_output
       FileUtils.mkdir_p( site.config.output_dir )
-      Parallel.each(@site.pages, in_processes: Parallel.processor_count) do |page|
-      #@site.pages.each do |page|
+      Parallel.each(@site.pages, :in_processes => Parallel.processor_count) do |page|
         start_time = DateTime.now
         generated_path = File.join( site.config.output_dir, page.output_path )
         if ( page.stale_output?( generated_path ) )
@@ -310,7 +308,7 @@ module Awestruct
 
     def generate_page(page, generated_path, produce_output=true)
       if ( produce_output )
-        $LOG.info "Generating: #{generated_path}" if $LOG.info? && !config.quiet
+        $LOG.debug "Generating: #{generated_path}" if $LOG.debug? && config.verbose
         FileUtils.mkdir_p( File.dirname( generated_path ) )
 
         c = page.rendered_content

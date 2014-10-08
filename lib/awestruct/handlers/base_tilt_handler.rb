@@ -14,14 +14,13 @@ module Awestruct
       def match(path)
         matcher = ::Tilt[File.basename(path)]
         if matcher.nil?
-	  $LOG.warn(%(Copying #{path}))
+          $LOG.warn(%(Copying #{path})) if $LOG.warn? && Awestruct::Engine.instance.config.verbose
           return false
         end
 
         # We have our own extra integration with Asciidoctor
-        if matcher.name.include? 'Asciidoctor'
-          return false
-        end
+        return false if matcher.name.include? 'Asciidoctor'
+
         matcher
       end
     end
@@ -141,9 +140,9 @@ module Awestruct
         rescue Exception => e
           error_page = context[:page]
           if error_page[:__is_layout] == true
-	    ExceptionHelper.log_message "An error during rendering layout file #{File.join site.dir, error_page.source_path} occurred."
+            ExceptionHelper.log_message "An error during rendering layout file #{File.join site.dir, error_page.source_path} occurred."
           else
-	    ExceptionHelper.log_message "An error during rendering #{File.join site.dir, error_page.source_path} occurred."
+            ExceptionHelper.log_message "An error during rendering #{File.join site.dir, error_page.source_path} occurred."
           end
           ExceptionHelper.log_message "Please see #{File.join site.dir, error_page.output_path} for more information"
           return ExceptionHelper.html_error_report e, error_page.source_path
