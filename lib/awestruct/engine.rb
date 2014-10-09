@@ -294,8 +294,7 @@ module Awestruct
 
     def generate_output
       FileUtils.mkdir_p( site.config.output_dir )
-      @site.pages.each do |page|
-      #Parallel.each(@site.pages, :in_threads => 40) do |page|
+      Parallel.each(@site.pages, :in_threads => 40) do |page|
         start_time = DateTime.now
         generated_path = File.join( site.config.output_dir, page.output_path )
         if ( page.stale_output?( generated_path ) )
